@@ -1,0 +1,46 @@
+#!/bin/bash
+if [[ ${#} -lt 1 ]]; then
+  echo "Usage: assumerole [-o] <role_arn> [session_name] [profile_name]
+  -o Override credentials in profile
+  "
+  exit 1
+fi
+override_profile=0
+
+while getopts 'o' opt; do
+  case "$opt" in
+    o)
+      override_profile=1
+      ;;
+    *)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+shift $((OPTIND -1))
+
+role_arn="${1}"
+session_name="${2:-$(whoami)@$(hostname)}"
+profile_name="${3:-default}"
+
+
+read AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN <<< "$(
+aws sts assume-role \
+  --role-arn "$role_arn" \
+  --role-session-name "$session_name" \
+  --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+  --output text
+)"
+echo "Current shell session assumed role successfully."
+
+if [[ "$override_profile" -eq 1 ]]; then
+  echo "Outputting to profile..."
+  aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID --profile $profile_name
+  aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY --profile $profile_name
+  aws configure set aws_session_token $AWS_SESSION_TOKEN --profile $profile_name
+  echo "Credentials updated in profile $profile_name"
+fi
+
+

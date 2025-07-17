@@ -1,0 +1,68 @@
+#!/bin/bash
+# This script install all shell scripts from the ./ShellScripts directory.
+
+TRUE="true"
+FALSE="false"
+
+#######################################
+# Installs a shell script from $1 to $2. It dose this by copying the file from source to target,
+# setting the file permissions to executable and then informing the user that the script has been installed.
+# Arguments:
+#   Shell script source location
+#   Shell script target location
+#######################################
+function install_script {
+  cp "$1" "$2"
+  chmod +x "$2"
+  echo "Installed $2"
+}
+
+# Check that user has correct permissions to perfrom install
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit
+fi
+
+# Available arguments:
+#   -d <directory>
+#       Specify the directory to install the shell scripts to. By default they are installed to /usr/local/bin
+#   -f
+#       Force install the scripts. By default, if a script already exists, it will ask you if you would like it to be
+#       overwritten. Specifying this argument will instruct the script to overwrite all scripts without asking.
+TARGET_DIRECTORY="/usr/local/bin"
+FORCE=$FALSE
+while getopts 'd:f' opt; do
+  case "$opt" in
+    d)
+      TARGET_DIRECTORY=$(echo ${OPTARG} | sed 's:/*$::g')
+      ;;
+    f)
+      FORCE=$TRUE
+      ;;
+    *)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+echo "Installing shell scripts to $TARGET_DIRECTORY"
+[[ $FORCE = "$TRUE" ]] && echo "Forcing install"
+
+for source_path in "./ShellScripts"/*
+do
+  script_name=$(basename "$source_path")
+  target_path="$TARGET_DIRECTORY/$script_name"
+  if [ $FORCE == $TRUE ] || ! test -f "$target_path"; then
+      install_script "$source_path" "$target_path"
+  else
+      while true; do
+          read -p "Overwrite $target_path? (y/n) " yn
+          case $yn in
+              [Yy] ) install_script "$source_path" "$target_path"; break;;
+              [Nn] ) break;;
+              * ) echo "Please answer with either y or n.";;
+          esac
+      done
+  fi
+done
