@@ -1,0 +1,42 @@
+#!/bin/bash
+
+profile="sso"
+while getopts 'p:' opt; do
+  case "$opt" in
+    p)
+      profile="${OPTARG}"
+      ;;
+    *)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
+if aws configure list-profiles | grep -q "$profile"; then
+  aws sso login --profile "$profile"
+else
+  aws configure --profile "$profile"
+fi
+
+credentials=$(aws configure export-credentials --profile "$profile")
+# TODO: implement without using jq later, blocked by:
+# https://github.com/aws/aws-cli/issues/9601
+
+AWS_ACCESS_KEY_ID=$(echo "$credentials" | jq --raw-output ".accessKeyId")
+AWS_SECRET_ACCESS_KEY=$(echo "$credentials" | jq --raw-output ".secretAccessKey")
+AWS_SESSION_TOKEN=$(echo "$credentials" | jq --raw-output ".sessionToken")
+
+# read -r AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN <<< "$credentials"
+
+export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
+aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
+aws configure set aws_session_token "$AWS_SESSION_TOKEN"
+
+
+
+
+
+
