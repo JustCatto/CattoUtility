@@ -2,6 +2,9 @@
 if [[ ${#} -lt 1 ]]; then
   echo "Usage: assumerole [-o] <role_arn> [session_name] [profile_name]
   -o Override credentials in profile
+  role_arn The ARN of the role to assume
+  session_name The name of the session to use (default: username@hostname)
+  profile_name The name of the profile to use (default: default), only used if -o is specified
   "
   exit 1
 fi
