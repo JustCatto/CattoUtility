@@ -28,16 +28,25 @@ role_arn="${1}"
 session_name="${2:-$(whoami)@$(hostname)}"
 profile_name="${3:-default}"
 
-
-read AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN <<< "$(
+output=$(
 aws sts assume-role \
   --role-arn "$role_arn" \
   --role-session-name "$session_name" \
   --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
-  --output text
-)"
+  --output text || {
+    echo "Failed to assume role."
+    exit 1
+  }
+)
+read AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN <<< "$output"
 export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-echo "Current shell session assumed role successfully."
+if aws sts get-caller-identity --profile "$profile_name" > /dev/null 2>&1; then
+  echo "Current shell session assumed role successfully."
+else
+  echo "Failed to assume role."
+  exit 1
+fi
+echo
 
 if [[ "$override_profile" -eq 1 ]]; then
   echo "Outputting to profile..."
