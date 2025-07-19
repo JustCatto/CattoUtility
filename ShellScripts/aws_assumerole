@@ -1,10 +1,12 @@
 #!/bin/bash
+
+role_config="$HOME/.aws/roleconfig"
+
 if [[ ${#} -lt 1 ]]; then
-  echo "Usage: assumerole [-o] <role_arn> [session_name] [profile_name]
+  echo "Usage: assumerole [-o] <role_name> [profile_name]
   -o Override credentials in profile
-  role_arn The ARN of the role to assume
-  session_name The name of the session to use (default: username@hostname)
-  profile_name The name of the profile to use (default: default), only used if -o is specified
+  role_name The name of the role to assume
+  profile_name The name of the profile to write credentials to (default: default), only used if -o is specified
   "
   exit 1
 fi
@@ -24,9 +26,9 @@ done
 
 shift $((OPTIND -1))
 
-role_arn="${1}"
-session_name="${2:-$(whoami)@$(hostname)}"
-profile_name="${3:-default}"
+role_name="${1}"
+profile_name="${2:-default}"
+read -r role_arn session_name <<< "$(jq --arg key "$role_name" -r '.[$key] | [.role_arn, .session_name] | @sh' "$role_config")"
 
 output=$(
 aws sts assume-role \
@@ -50,9 +52,9 @@ echo
 
 if [[ "$override_profile" -eq 1 ]]; then
   echo "Outputting to profile..."
-  aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID --profile $profile_name
-  aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY --profile $profile_name
-  aws configure set aws_session_token $AWS_SESSION_TOKEN --profile $profile_name
+  aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID" --profile "$profile_name"
+  aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" --profile "$profile_name"
+  aws configure set aws_session_token "$AWS_SESSION_TOKEN" --profile "$profile_name"
   echo "Credentials updated in profile $profile_name"
 fi
 

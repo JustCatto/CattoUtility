@@ -4,6 +4,14 @@
 TRUE="true"
 FALSE="false"
 
+while IFS= read -r line; do
+    if ! command -v "$line" >/dev/null 2>&1; then
+      echo "Error: $line is not installed"
+      echo "Please install $line"
+      exit 1
+    fi
+done < dependencies.txt
+
 #######################################
 # Installs a shell script from $1 to $2. It dose this by copying the file from source to target,
 # setting the file permissions to executable and then informing the user that the script has been installed.

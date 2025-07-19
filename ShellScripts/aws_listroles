@@ -1,0 +1,18 @@
+#!/bin/bash
+
+role_config="$HOME/.aws/roleconfig"
+
+if [ ! -s "$role_config" ]; then
+  echo "roleconfig file does not exist, please run aws_manageroles first"
+  exit 1
+fi
+if ! jq "." "$role_config" >/dev/null; then
+  echo "Invalid JSON in $role_config"
+  exit 1
+fi
+printf "%-25s %-80s %-30s\n" "Friendly Name" "Role ARN" "Session Name"
+
+while read -r key; do
+  read -r role_arn session_name <<< "$(jq --arg key "$key" -r '.[$key] | [.role_arn, .session_name] | @sh' "$role_config")"
+  printf "%-25s %-80s %-30s\n" "$key" "$role_arn" "$session_name"
+done < <(jq -r 'keys[]' "$role_config")

@@ -1,0 +1,117 @@
+#!/bin/bash
+
+role_config="$HOME/.aws/roleconfig"
+
+arn_regex="^arn:(aws|aws-cn|aws-us-gov):([a-z0-9-]+):([a-z0-9-]*):(\d{12}|):(?:(\w+)[/:])?([A-Za-z0-9+=,.@/_-]+)$"
+session_name_regex="^[a-zA-Z0-9+=,.@_-]{2,64}$"
+
+if [ ! -s "$role_config" ]; then
+  echo "{}" > "$role_config"
+fi
+
+if ! jq "." "$role_config" >/dev/null; then
+  echo "Invalid JSON in $role_config"
+  exit 1
+fi
+
+function outputUsage {
+  echo "Usage: aws_manageroles <profile_name> <role_arn> [session_name] [-d, -h]
+      If -d is specified, role_arn and session_name are not required.
+      "
+}
+
+function crupdateRole {
+  local name="$1"
+  local role_arn="$2"
+  local session_name="$3"
+  local role_config="$4"
+  jq --sort-keys --arg name "$name" --arg role_arn "$role_arn" --arg session_name "$session_name" \
+  '.[$name] = {role_arn: $role_arn, session_name: $session_name}' \
+  "$role_config"
+}
+
+function deleteRole {
+  name="$1"
+  role_config="$2"
+  jq --sort-keys --arg name "$name" 'del(.[$name])' \
+  "$role_config"
+}
+
+function compareFiles {
+  local file1="$1"
+  local file2="$2"
+  if diff -q "$file1" "$file2" >/dev/null 2>&1; then
+    return 0
+  else
+    return 1
+  fi
+}
+deleteProfile=0
+while getopts 'hd' opt; do
+  case "$opt" in
+    h)
+      outputUsage
+      exit 0
+      ;;
+    d)
+      deleteProfile=1
+      ;;
+    *)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
+shift $((OPTIND -1))
+
+name="${1}"
+
+if [[ "$deleteProfile" -eq 1 ]]; then
+  if [[ ${#} -lt 1 ]]; then
+    outputUsage
+    exit 1
+  fi
+  tmp_file="$(mktemp)"
+  deleteRole "$name" "$role_config" > "$tmp_file"
+  if compareFiles "$tmp_file" "$role_config"; then
+    rm "$tmp_file"
+    echo "Profile $name not found"
+  else
+    mv "$tmp_file" "$role_config"
+    echo "Profile $name deleted"
+  fi
+  exit 0
+fi
+
+if [[ ${#} -lt 2 ]]; then
+  outputUsage
+  exit 1
+fi
+tmp_file="$(mktemp)"
+
+role_arn="${2}"
+if [[ ! "$role_arn" =~ $arn_regex ]]; then
+  echo "Invalid role ARN: $role_arn"
+  exit 1
+fi
+session_name="${3:-$(whoami)@$(hostname)}"
+if [[ ! "$session_name" =~ $session_name_regex ]]; then
+  echo "Invalid session name: $session_name"
+  exit 1
+fi
+
+crupdateRole "$name" "$role_arn" "$session_name" "$role_config" > "$tmp_file"
+
+if compareFiles "$role_config" "$tmp_file"; then
+  echo "Profile $name details not changed"
+  rm "$tmp_file"
+  exit 0
+fi
+
+
+mv "$tmp_file" "$role_config"
+# Cleanup after successful update
+echo "Profile $name details updated"
+
+
