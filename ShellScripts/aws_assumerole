@@ -27,6 +27,11 @@ done
 shift $((OPTIND -1))
 
 role_name="${1}"
+if [[ $(jq --arg role_name "$role_name" 'has($role_name)' "$role_config") == "false" ]]; then
+  echo "Role invalid, available roles:"
+  echo jq -r 'keys[] | @sh' "$role_config"
+  exit 1
+fi
 profile_name="${2:-default}"
 read -r role_arn session_name <<< "$(jq --arg key "$role_name" -r '.[$key] | [.role_arn, .session_name] | @sh' "$role_config")"
 

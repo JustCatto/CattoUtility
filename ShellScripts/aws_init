@@ -6,13 +6,19 @@ while getopts 'p:' opt; do
     p)
       profile="${OPTARG}"
       ;;
+    h)
+      echo "Usage: aws_init [-p <profile>]
+      -p The profile to use (default: sso)
+      -h Show this help
+      "
+      exit 0
+      ;;
     *)
       echo "Invalid option: -$OPTARG" >&2
       exit 1
       ;;
   esac
 done
-shift $((OPTIND -1))
 
 if aws configure list-profiles | grep -q "$profile"; then
   aws sso login --profile "$profile"
@@ -21,6 +27,10 @@ else
 fi
 
 credentials=$(aws configure export-credentials --profile "$profile")
+if [ -z "$credentials" ]; then
+  echo "Error: Failed to export credentials for profile '$profile'" >&2
+  exit 1
+fi
 # TODO: implement without using jq later, blocked by:
 # https://github.com/aws/aws-cli/issues/9601
 
@@ -34,9 +44,3 @@ export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
 aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
 aws configure set aws_session_token "$AWS_SESSION_TOKEN"
-
-
-
-
-
-
