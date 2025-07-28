@@ -2,7 +2,7 @@
 
 role_config="$HOME/.aws/roleconfig"
 
-arn_regex="^arn:(aws|aws-cn|aws-us-gov):([a-z0-9-]+):([a-z0-9-]*):(\d{12}|):(?:(\w+)[/:])?([A-Za-z0-9+=,.@/_-]+)$"
+arn_regex="^arn:(aws|aws-cn|aws-us-gov):iam::role:[a-zA-Z0-9+=,.@_-]{2,64}$"
 session_name_regex="^[a-zA-Z0-9+=,.@_-]{2,64}$"
 
 if [ ! -s "$role_config" ]; then
@@ -65,7 +65,7 @@ done
 
 shift $((OPTIND -1))
 
-name="${1}"
+name="${2}"
 
 if [[ "$deleteProfile" -eq 1 ]]; then
   if [[ ${#} -lt 1 ]]; then
@@ -90,8 +90,8 @@ if [[ ${#} -lt 2 ]]; then
 fi
 tmp_file="$(mktemp)"
 
-role_arn="${2}"
-if [[ ! "$role_arn" =~ $arn_regex ]]; then
+role_arn="${1}"
+if [[ ! $role_arn =~ ^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role\/[a-zA-Z0-9+=,.@_-]{2,64} ]]; then
   echo "Invalid role ARN: $role_arn"
   exit 1
 fi
