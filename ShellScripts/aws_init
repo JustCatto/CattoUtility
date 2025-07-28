@@ -19,11 +19,10 @@ while getopts 'p:' opt; do
       ;;
   esac
 done
-
 if aws configure list-profiles | grep -q "$profile"; then
   aws sso login --profile "$profile"
 else
-  aws configure --profile "$profile"
+  aws configure sso --profile "$profile"
 fi
 
 credentials=$(aws configure export-credentials --profile "$profile")
