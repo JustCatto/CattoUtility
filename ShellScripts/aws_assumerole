@@ -2,23 +2,33 @@
 
 role_config="$HOME/.aws/roleconfig"
 
-if [[ ${#} -lt 1 ]]; then
-  echo "Usage: assumerole [-o] <role_name> [profile_name]
+function outputUsage {
+  echo "Usage: aws_assumerole [-o] [-h] <role_name> [profile_name]
   -o Override credentials in profile
+  -h Show this help
   role_name The name of the role to assume
   profile_name The name of the profile to write credentials to (default: default), only used if -o is specified
   "
+}
+if [[ ${#} -lt 1 ]]; then
+  outputUsage
   exit 1
 fi
+
 override_profile=0
 
-while getopts 'o' opt; do
+while getopts 'oh' opt; do
   case "$opt" in
     o)
       override_profile=1
       ;;
+    h)
+      outputUsage
+      exit 0
+      ;;
     *)
       echo "Invalid option: -$OPTARG" >&2
+      outputUsage
       exit 1
       ;;
   esac
